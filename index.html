@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disusso Admin Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS link -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon"><i class="fa-solid fa-comments"></i></span>
+                    <h2>DISCUSSO</h2>
+                </div>
+                <button class="toggle-btn" id="toggle-btn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+
+            <ul class="nav-links">
+                <li class="nav-item active" data-target="view-dashboard">
+                    <a href="#">
+                        <i class="fa-solid fa-house"></i>
+                        <span class="link-text">Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-target="view-users">
+                    <a href="#">
+                        <i class="fa-solid fa-users"></i>
+                        <span class="link-text">Users</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-target="view-posts">
+                    <a href="#">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span class="link-text">Posts</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-target="view-comments">
+                    <a href="#">
+                        <i class="fa-solid fa-comments"></i>
+                        <span class="link-text">Comments</span>
+                    </a>
+                </li>
+                <li class="nav-item" data-target="view-reports">
+                    <a href="#">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span class="link-text">Reports</span>
+                        <span class="badge" id="reports-badge">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span class="link-text">Analytics</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#">
+                        <i class="fa-solid fa-gear"></i>
+                        <span class="link-text">Settings</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <a href="#" class="logout" id="logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="link-text">Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <button class="mobile-menu-btn" id="mobile-menu-btn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="global-search" placeholder="Search users, posts, or keywords...">
+                </div>
+
+                <div class="header-actions">
+                    <button class="icon-btn theme-toggle" id="theme-toggle">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button class="icon-btn notification-btn" id="notification-btn">
+                        <i class="fa-solid fa-bell"></i>
+                        <span class="notify-badge">3</span>
+                    </button>
+                    <div class="profile-dropdown">
+                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=D4AF37&color=fff" alt="Admin"
+                            class="avatar">
+                        <div class="profile-info">
+                            <span class="name">Admin</span>
+                            <span class="role">Superuser</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="content-wrapper" id="view-dashboard">
+                <div class="page-header">
+                    <h1>Overview</h1>
+                    <p>Welcome back! Here's what's happening today.</p>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon users-icon"><i class="fa-solid fa-user-group"></i></div>
+                        <div class="kpi-details">
+                            <h3>Total Users</h3>
+                            <div class="kpi-value" id="total-users">0</div>
+                            <div class="kpi-trend neutral"><i class="fa-solid fa-minus"></i> Live Data</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon posts-icon"><i class="fa-regular fa-message"></i></div>
+                        <div class="kpi-details">
+                            <h3>Active Discussions</h3>
+                            <div class="kpi-value" id="total-posts">0</div>
+                            <div class="kpi-trend neutral"><i class="fa-solid fa-minus"></i> Live Data</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon flag-icon"><i class="fa-solid fa-flag"></i></div>
+                        <div class="kpi-details">
+                            <h3>Pending Reports</h3>
+                            <div class="kpi-value" id="total-reports">0</div>
+                            <div class="kpi-trend neutral"><i class="fa-solid fa-minus"></i> N/A</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon traffic-icon"><i class="fa-solid fa-server"></i></div>
+                        <div class="kpi-details">
+                            <h3>Server Load</h3>
+                            <div class="kpi-value" id="server-load">-</div>
+                            <div class="kpi-trend neutral"><i class="fa-solid fa-minus"></i> N/A</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts & Tables Section -->
+                <div class="dashboard-grid">
+                    <!-- Activity Graph Placeholder -->
+                    <div class="grid-card col-span-2 chart-card">
+                        <div class="card-header">
+                            <h2>Engagement Overview</h2>
+                            <select class="action-select">
+                                <option>Last 7 Days</option>
+                                <option>Last 30 Days</option>
+                                <option>This Year</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <!-- Dynamically Built 7-Day Chart -->
+                            <div class="css-chart" id="engagement-chart">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Moderation Tasks -->
+                    <div class="grid-card">
+                        <div class="card-header">
+                            <h2>Moderation Queue</h2>
+                            <button class="btn-text" id="view-all-moderation">View All</button>
+                        </div>
+                        <ul class="activity-list" id="moderation-queue">
+                            <li class="activity-item" style="justify-content: center; padding: 2rem; color: #888;">No
+                                pending reports found</li>
+                        </ul>
+                    </div>
+
+                    <!-- Recent Users -->
+                    <div class="grid-card col-span-3">
+                        <div class="card-header">
+                            <h2>Recent Users</h2>
+                            <button class="btn-text" id="manage-users-btn">Manage Users</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Date Joined</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Content -->
+            <div class="content-wrapper" id="view-users" style="display: none;">
+                <div class="page-header">
+                    <h1>User Management</h1>
+                    <p>Manage all registered users and their details.</p>
+                </div>
+                <div class="grid-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Date Joined</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-users-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Posts Content -->
+            <div class="content-wrapper" id="view-posts" style="display: none;">
+                <div class="page-header">
+                    <h1>Posts Management</h1>
+                    <p>Review and moderate all platform discussion threads.</p>
+                </div>
+                <div class="grid-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Post Title & Author</th>
+                                    <th>Date Created</th>
+                                    <th>Content Snippet</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-posts-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comments Content -->
+            <div class="content-wrapper" id="view-comments" style="display: none;">
+                <div class="page-header">
+                    <h1>Comments Management</h1>
+                    <p>Review and moderate all user replies across the platform.</p>
+                </div>
+                <div class="grid-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Date Replying</th>
+                                    <th>Comment Content</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-comments-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Content -->
+            <div class="content-wrapper" id="view-reports" style="display: none;">
+                <div class="page-header">
+                    <h1>Reports</h1>
+                    <p>Review user-submitted reports on posts across the platform.</p>
+                </div>
+                <div class="grid-card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Post Title</th>
+                                    <th>Reported By</th>
+                                    <th>Reason</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-reports-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase Compat SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
