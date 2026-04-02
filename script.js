@@ -12,6 +12,11 @@ const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 console.log("Firebase App Initialized: ", app.name);
 
+// Warning for placeholder App ID
+if (firebaseConfig.appId.includes("placeholder")) {
+    console.warn("⚠️ ATTENTION: Your Firebase appId is still set to a placeholder. This may cause connection issues. Please update it in script.js with your real Web App ID from the Firebase Console.");
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // ---- Elements ----
     const sidebar = document.getElementById('sidebar');
@@ -151,6 +156,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm("Are you sure you want to permanently delete this post?")) {
             try {
                 await firebase.firestore().collection("posts").doc(id).delete();
+                
+                // Also delete any existing reports for this post so they aren't orphaned
+                const snapshot = await db.collection("reports").where("postId", "==", id).get();
+                if (!snapshot.empty) {
+                    const batch = db.batch();
+                    snapshot.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+                }
+
                 fetchDashboardData();
             } catch (e) { console.error(e); alert("Error deleting post"); }
         }
@@ -190,16 +206,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    window.dismissAllSectionReports = async (postId) => {
+        if (confirm(`Are you sure you want to dismiss all reports for Post ID: ${postId}?`)) {
+            try {
+                const snapshot = await db.collection("reports").where("postId", "==", postId).get();
+                const batch = db.batch();
+                snapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                console.log(`Successfully dismissed ${snapshot.size} reports for post ${postId}`);
+                fetchDashboardData();
+            } catch (e) { console.error(e); alert("Error dismissing all reports for this post"); }
+        }
+    };
+
+    // ---- Helper to get user-friendly error messages ----
+    function getFirestoreErrorMessage(error) {
+        if (error.code === 'permission-denied') return 'Access Denied (Check Firestore Rules)';
+        if (error.message && error.message.includes("requires an index")) return 'Missing Index (Check Console / F12)';
+        if (error.code === 'unavailable') return 'Network Error (Check Connection)';
+        return 'Data Fetch Error (Check Console)';
+    }
+
     // ---- Fetch and Populate Dashboard Data ----
     async function fetchDashboardData() {
+        console.log("Starting dashboard data fetch...");
+
+        // 1. Fetch Users
+        let usersSnapshot;
         try {
-            // 1. Fetch Users
-            const usersSnapshot = await db.collection("logins").get();
+            console.log("Fetching users from 'logins' collection...");
+            usersSnapshot = await db.collection("logins").get();
+            console.log(`Successfully fetched ${usersSnapshot.size} users.`);
+
             const totalUsersEl = document.getElementById('total-users');
             if (totalUsersEl) totalUsersEl.textContent = usersSnapshot.size.toLocaleString();
 
             const usersTableBody = document.getElementById('users-table-body');
             const allUsersTableBody = document.getElementById('all-users-table-body');
+
             if (usersTableBody || allUsersTableBody) {
                 if (usersTableBody) usersTableBody.innerHTML = '';
                 if (allUsersTableBody) allUsersTableBody.innerHTML = '';
@@ -216,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.createdAt) {
                         try {
                             const date = data.createdAt.toDate();
-                            joinedDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                            joinedDate = date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                         } catch (e) { /* fallback if its mapped weirdly */ }
                     }
 
@@ -243,9 +289,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     count++;
                 });
             }
+        } catch (error) {
+            console.error("Error fetching users: ", error);
+            const usersTableBody = document.getElementById('users-table-body');
+            const msg = getFirestoreErrorMessage(error);
+            if (usersTableBody) usersTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding: 2rem;">${msg}</td></tr>`;
+        }
 
-            // 2. Fetch Posts
-            const postsSnapshot = await db.collection("posts").get();
+        // 2. Fetch Posts
+        let postsSnapshot;
+        try {
+            console.log("Fetching posts from 'posts' collection...");
+            postsSnapshot = await db.collection("posts").get();
+            console.log(`Successfully fetched ${postsSnapshot.size} posts.`);
+
             const totalPostsEl = document.getElementById('total-posts');
             if (totalPostsEl) totalPostsEl.textContent = postsSnapshot.size.toLocaleString();
 
@@ -312,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.timestamp) {
                         try {
                             const date = data.timestamp.toDate();
-                            postDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                            postDate = date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                         } catch (e) { }
                     }
 
@@ -340,9 +397,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     allPostsTableBody.appendChild(tr);
                 });
             }
+        } catch (error) {
+            console.error("Error fetching posts: ", error);
+            const allPostsTableBody = document.getElementById('all-posts-table-body');
+            const msg = getFirestoreErrorMessage(error);
+            if (allPostsTableBody) allPostsTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding: 2rem;">${msg}</td></tr>`;
+        }
 
-            // 3. Fetch Comments Using Collection Group Query
+        // 3. Fetch Comments Using Collection Group Query
+        try {
+            console.log("Fetching comments from collectionGroup 'comments'...");
             const commentsSnapshot = await db.collectionGroup("comments").get();
+            console.log(`Successfully fetched ${commentsSnapshot.size} comments.`);
+
             const allCommentsTableBody = document.getElementById('all-comments-table-body');
             if (allCommentsTableBody) {
                 allCommentsTableBody.innerHTML = '';
@@ -356,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.timestamp) {
                         try {
                             const date = data.timestamp.toDate();
-                            commentDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+                            commentDate = date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                         } catch (e) { }
                     }
 
@@ -385,29 +452,162 @@ document.addEventListener('DOMContentLoaded', () => {
                     allCommentsTableBody.appendChild(tr);
                 });
             }
+        } catch (error) {
+            console.error("Error fetching comments: ", error);
+            const allCommentsTableBody = document.getElementById('all-comments-table-body');
+            const msg = getFirestoreErrorMessage(error);
+            if (allCommentsTableBody) allCommentsTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding: 2rem;">${msg}</td></tr>`;
+        }
 
-            // 4. Fetch Reports
+        // 4. Fetch Reports
+        try {
+            console.log("Fetching reports from 'reports' collection...");
             let reportsSnapshot;
             try {
                 reportsSnapshot = await db.collection("reports").orderBy("timestamp", "desc").get();
             } catch (indexErr) {
                 // Fallback if Firestore composite index is not yet created
-                console.warn("Reports index not ready, fetching without order:", indexErr);
+                console.warn("Reports index not ready, trying without order:", indexErr);
                 reportsSnapshot = await db.collection("reports").get();
             }
+
+            if (!reportsSnapshot) {
+                throw new Error("No reports data returned (fallback failed)");
+            }
+
+            console.log(`Successfully fetched ${reportsSnapshot.size} total report entries.`);
+
             const totalReportsEl = document.getElementById('total-reports');
             const reportsBadge = document.getElementById('reports-badge');
             if (totalReportsEl) totalReportsEl.textContent = reportsSnapshot.size.toLocaleString();
             if (reportsBadge) reportsBadge.textContent = reportsSnapshot.size;
 
-            // Build a quick lookup of post titles from already-fetched postsSnapshot
-            const postTitleMap = {};
-            postsSnapshot.forEach(doc => {
-                postTitleMap[doc.id] = doc.data().title || 'Untitled';
+            // Build Post & User Lookups
+            const postMap = {};
+            if (postsSnapshot) {
+                postsSnapshot.forEach(doc => { postMap[doc.id] = doc.data(); });
+            }
+            const userMap = {};
+            if (usersSnapshot) {
+                usersSnapshot.forEach(doc => { userMap[doc.id] = doc.data(); });
+            }
+
+            // Group Reports by postId
+            const groupedReports = {};
+            reportsSnapshot.forEach(doc => {
+                const data = doc.data();
+                const postId = data.postId || 'N/A';
+                if (!groupedReports[postId]) groupedReports[postId] = [];
+                groupedReports[postId].push({ id: doc.id, ...data });
             });
 
-            // Populate the Moderation Queue on the dashboard (max 5)
+            const allReportsTableBody = document.getElementById('all-reports-table-body');
             const moderationQueue = document.getElementById('moderation-queue');
+
+            if (allReportsTableBody) {
+                allReportsTableBody.innerHTML = '';
+
+                const postIds = Object.keys(groupedReports);
+                if (postIds.length === 0) {
+                    allReportsTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: #888;">No reports found</td></tr>';
+                }
+
+                postIds.forEach(postId => {
+                    const postReports = groupedReports[postId];
+                    const postData = postMap[postId] || {};
+                    const postTitle = postData.title || 'Unknown Post Title';
+                    const postAuthor = postData.username || 'Unknown Author';
+                    const postStatus = postData.status || 'active';
+                    const isDeactivated = postStatus === 'deactivated';
+
+                    // Latest report time
+                    let latestReportTime = 'Unknown';
+                    const sortedReports = [...postReports].sort((a, b) => {
+                        const timeA = a.timestamp ? a.timestamp.toMillis() : 0;
+                        const timeB = b.timestamp ? b.timestamp.toMillis() : 0;
+                        return timeB - timeA;
+                    });
+
+                    if (sortedReports[0] && sortedReports[0].timestamp) {
+                        try { latestReportTime = sortedReports[0].timestamp.toDate().toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { }
+                    }
+
+                    // 1. Create the Main Row
+                    const mainTr = document.createElement('tr');
+                    mainTr.className = 'flagged-row';
+                    mainTr.innerHTML = `
+                        <td>
+                            <div class="user-info">
+                                <span class="expand-icon"><i class="fa-solid fa-chevron-right"></i></span>
+                                <div>
+                                    <div class="user-name">${postTitle}<span class="flag-badge">Flagged</span></div>
+                                    <div class="user-email">Author: <strong>${postAuthor}</strong> | Post ID: ${postId}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status badge-inactive" style="background: rgba(239, 68, 68, 0.05)">
+                                <i class="fa-solid fa-file-invoice" style="margin-right: 5px;"></i> ${postReports.length} reports
+                            </span>
+                        </td>
+                        <td><span class="status ${isDeactivated ? 'badge-suspended' : 'badge-active'}">${isDeactivated ? 'Deactivated' : 'Live'}</span></td>
+                        <td>${latestReportTime}</td>
+                        <td style="display: flex; gap: 8px;">
+                            <button class="btn-icon danger" title="Dismiss All Reports" onclick="event.stopPropagation(); window.dismissAllSectionReports('${postId}')"><i class="fa-solid fa-xmark"></i></button>
+                            <button class="btn-icon warning" title="${isDeactivated ? 'Activate Post' : 'Deactivate Post'}" onclick="event.stopPropagation(); window.togglePostStatus('${postId}', '${postStatus}')"><i class="fa-solid ${isDeactivated ? 'fa-check' : 'fa-ban'}"></i></button>
+                            <button class="btn-icon primary" title="Delete Post Entirely" onclick="event.stopPropagation(); window.deletePost('${postId}')"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+
+                    // 2. Create the Details Row
+                    const detailsTr = document.createElement('tr');
+                    detailsTr.className = 'details-row';
+
+                    let reportsHtml = postReports.map(r => {
+                        let rDate = 'Unknown';
+                        if (r.timestamp) { try { rDate = r.timestamp.toDate().toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { } }
+
+                        // Look up reporter username
+                        const reporterData = userMap[r.userId] || {};
+                        const reporterName = reporterData.username || 'Unknown User';
+
+                        return `
+                            <div class="report-detail-item">
+                                <div class="reporter"><i class="fa-solid fa-user-circle"></i> ${reporterName}</div>
+                                <div class="reason">"${r.reason || 'No reason provided'}"</div>
+                                <div class="date">${rDate}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    detailsTr.innerHTML = `
+                        <td colspan="5">
+                            <div class="details-wrapper">
+                                <div class="details-title"><i class="fa-solid fa-list-check"></i> Individual Report Details</div>
+                                <div class="reports-container">
+                                    <div class="report-detail-header">
+                                        <div class="header-user">Username</div>
+                                        <div class="header-reason">Report Reason</div>
+                                        <div class="header-date">Date</div>
+                                    </div>
+                                    ${reportsHtml}
+                                </div>
+                            </div>
+                        </td>
+                    `;
+
+                    // Handle Expansion
+                    mainTr.addEventListener('click', () => {
+                        mainTr.classList.toggle('active');
+                        detailsTr.classList.toggle('active');
+                    });
+
+                    allReportsTableBody.appendChild(mainTr);
+                    allReportsTableBody.appendChild(detailsTr);
+                });
+            }
+
+            // Populate the Moderation Queue on the dashboard (max 5)
             if (moderationQueue) {
                 moderationQueue.innerHTML = '';
                 if (reportsSnapshot.size === 0) {
@@ -417,14 +617,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     reportsSnapshot.forEach(doc => {
                         if (queueCount >= 5) return;
                         const data = doc.data();
-                        const postTitle = postTitleMap[data.postId] || 'Unknown Post';
+                        const postId = data.postId || 'N/A';
+                        const postData = postMap[postId] || {};
+                        const postTitle = postData.title || 'Unknown Post Title';
+
+                        // Look up reporter username for the queue
+                        const reporterData = userMap[data.userId] || {};
+                        const reporterName = reporterData.username || 'Unknown User';
                         const reason = data.reason || 'No reason given';
+
                         const li = document.createElement('li');
                         li.className = 'activity-item';
                         li.innerHTML = `
                             <div class="activity-content">
                                 <h4><i class="fa-solid fa-flag" style="color: var(--danger); margin-right: 8px;"></i>${postTitle}</h4>
-                                <p>${reason}</p>
+                                <p>Reported by <strong>${reporterName}</strong>: ${reason}</p>
                             </div>
                             <div class="activity-actions">
                                 <button class="btn-icon danger" title="Dismiss" onclick="window.dismissReport('${doc.id}')"><i class="fa-solid fa-xmark"></i></button>
@@ -435,51 +642,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             }
-
-            // Populate the full Reports table
-            const allReportsTableBody = document.getElementById('all-reports-table-body');
-            if (allReportsTableBody) {
-                allReportsTableBody.innerHTML = '';
-                reportsSnapshot.forEach(doc => {
-                    const data = doc.data();
-                    const postTitle = postTitleMap[data.postId] || 'Unknown Post';
-                    const userId = data.userId || 'Unknown';
-                    const reason = data.reason || 'No reason';
-
-                    let reportDate = 'Unknown';
-                    if (data.timestamp) {
-                        try {
-                            const date = data.timestamp.toDate();
-                            reportDate = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                        } catch (e) { }
-                    }
-
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>
-                            <div class="user-info">
-                                <div>
-                                    <div class="user-name">${postTitle}</div>
-                                    <div class="user-email">ID: ${data.postId || 'N/A'}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>${userId}</td>
-                        <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${reason}">${reason}</td>
-                        <td>${reportDate}</td>
-                        <td style="display: flex; gap: 8px;">
-                            <button class="btn-icon danger" title="Dismiss Report" onclick="window.dismissReport('${doc.id}')"><i class="fa-solid fa-xmark"></i></button>
-                            <button class="btn-icon warning" title="Deactivate Post" onclick="window.togglePostStatus('${data.postId}', 'active')"><i class="fa-solid fa-ban"></i></button>
-                            <button class="btn-icon primary" title="Delete Post" onclick="window.deletePost('${data.postId}')"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    `;
-                    allReportsTableBody.appendChild(tr);
-                });
-            }
-
         } catch (error) {
-            console.error("Error fetching dashboard data: ", error);
+            console.error("Error fetching reports: ", error);
+            const allReportsTableBody = document.getElementById('all-reports-table-body');
+            const moderationQueue = document.getElementById('moderation-queue');
+            const msg = getFirestoreErrorMessage(error);
+            if (allReportsTableBody) allReportsTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding: 2rem;">${msg}</td></tr>`;
+            if (moderationQueue) moderationQueue.innerHTML = `<li class="activity-item" style="justify-content: center; padding: 2rem; color: var(--danger);">${msg}</li>`;
         }
+
+        console.log("Dashboard data fetch cycle complete.");
     }
 
     // Trigger the data fetch
