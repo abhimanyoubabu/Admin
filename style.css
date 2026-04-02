@@ -1154,6 +1154,36 @@ button {
     .nav-item a {
         padding: 10px 14px;
     }
+    
+    /* Fix grouped reports on mobile/portrait */
+    .details-wrapper {
+        padding: 12px;
+        margin: 8px 0;
+    }
+
+    .report-detail-header {
+        display: none; /* Hide multi-column header on portrait */
+    }
+
+    .report-detail-item {
+        grid-template-columns: 1fr; /* Stack the details vertically */
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        margin-bottom: 10px;
+    }
+
+    .report-detail-item .reason {
+        padding-right: 0;
+        margin-bottom: 4px;
+    }
+
+    .report-detail-item .date {
+        text-align: left;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
 }
 
 @media (max-width: 480px) {
