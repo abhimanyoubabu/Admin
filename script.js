@@ -656,4 +656,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Trigger the data fetch
     fetchDashboardData();
+    
+    // ---- Mock Server Load Fluctuation ----
+    function initMockServerLoad() {
+        const loadEl = document.getElementById('server-load');
+        const trendEl = loadEl ? loadEl.nextElementSibling : null;
+        if (!loadEl || !trendEl) return;
+        
+        let currentLoad = 15; // Base resting load
+        loadEl.textContent = `${currentLoad}%`;
+        trendEl.innerHTML = `<i class="fa-solid fa-server"></i> Online`;
+        trendEl.className = 'kpi-trend positive';
+
+        setInterval(() => {
+            const fluctuation = Math.floor(Math.random() * 7) - 3; // -3 to +3
+            let newLoad = currentLoad + fluctuation;
+            
+            // Keep bounds realistic
+            if (newLoad < 8) newLoad = 8;
+            if (newLoad > 65) newLoad = 65;
+
+            // Rare semi-spike
+            if (Math.random() > 0.92) newLoad += Math.floor(Math.random() * 10) + 5;
+            
+            loadEl.textContent = `${newLoad}%`;
+
+            if (newLoad > currentLoad) {
+                trendEl.innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> Traffic Spike`;
+                trendEl.className = newLoad > 40 ? 'kpi-trend negative' : 'kpi-trend positive';
+            } else if (newLoad < currentLoad) {
+                trendEl.innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> Load Easing`;
+                trendEl.className = 'kpi-trend neutral';
+            }
+            
+            currentLoad = newLoad;
+        }, 3500); // Update every 3.5 seconds
+    }
+    
+    initMockServerLoad();
 });
